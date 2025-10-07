@@ -14,7 +14,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useActiveChat } from "../contexts/ActiveChatContext";
 import { useEffect } from "react";
-import { setActiveChatId } from "../utils/notificationsState";
 
 const USER_ME = "me";
 const USER_OTHER = "other";
@@ -60,10 +59,9 @@ const initialMessages = [
 ];
 
 export default function ChatScreen({ route, navigation }) {
-    const [messages, setMessages] = useState(initialMessages);
     const [draft, setDraft] = useState("");
     const listRef = useRef(null);
-    const { chatId } = route.params;
+    const { chatId, nameChat } = route.params;
 
     const {
         setActiveChatId,
@@ -180,7 +178,7 @@ export default function ChatScreen({ route, navigation }) {
                 <Image source={{ uri: AVATAR_OTHER }} style={styles.avatar} />
 
                 <View style={styles.headerCenter}>
-                    <Text style={styles.name}>Yohalmo Vasquez</Text>
+                    <Text style={styles.name}>{nameChat}</Text>
                     <Text style={styles.role}>En linea</Text>
                 </View>
             </View>

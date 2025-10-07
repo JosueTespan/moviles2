@@ -5,9 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BottomTabBarHeightCallbackContext } from "@react-navigation/bottom-tabs";
 
 const DUMMY_CHATS = [
-    { id: "abc123", title: "General" },
-    { id: "dev42", title: "Desarrollo" },
-    { id: "ventas77", title: "Ventas" },
+    { id: "chatYohalmo", title: "Yohalmo", lastMessage:"Este es el ultimo mensaje que se envio" },
+    { id: "chatHants", title: "Hants", lastMessage:"Este es el ultimo mensaje que se envio" },
+    { id: "chatArmando", title: "Armando", lastMessage:"Este es el ultimo mensaje que se envio" },
+    { id: "chatJouse", title: "Josue", lastMessage:"Este es el ultimo mensaje que se envio" },
 ];
 
 const AVATAR_OTHER = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=60";
@@ -32,7 +33,7 @@ export default function ChatsScreen() {
                     keyExtractor={(i) => i.id}
                     renderItem={({ item }) => (
                         <Pressable
-                            onPress={() => navigation.navigate("Chat", { chatId: item.id })}
+                            onPress={() => navigation.navigate("Chat", { chatId: item.id, nameChat: item.title })}
                         >
                             <View style={styles.card}>
                                 <Image source={{ uri: AVATAR_OTHER }} style={styles.avatar} />
@@ -45,7 +46,7 @@ export default function ChatsScreen() {
                                             numberOfLines={1}
                                             ellipsizeMode="tail"
                                         >
-                                            Yohalmo Vasquez
+                                            {item.title}
                                         </Text>
 
                                         <Text style={styles.time} numberOfLines={1}>
@@ -58,7 +59,7 @@ export default function ChatsScreen() {
                                         numberOfLines={1}
                                         ellipsizeMode="tail"
                                     >
-                                        Este es e ultimo mensaje que se envio
+                                        {item.lastMessage}
                                     </Text>
                                 </View>
                             </View>

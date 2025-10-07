@@ -19,8 +19,7 @@ import { setActiveChatId } from "../utils/notificationsState";
 const USER_ME = "me";
 const USER_OTHER = "other";
 
-const AVATAR_OTHER =
-    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=60";
+const AVATAR_OTHER = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=60";
 
 const initialMessages = [
     {

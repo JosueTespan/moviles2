@@ -1,6 +1,7 @@
 package com.uso_android.api.services;
 
-import com.uso_android.api.dtos.ChatRequest;
+import com.uso_android.api.entities.Mensaje;
+import com.uso_android.api.entities.Usuario;
 
 import org.springframework.stereotype.Service;
 import com.google.firebase.messaging.*;
@@ -8,33 +9,41 @@ import com.google.firebase.messaging.*;
 @Service
 public class FcmService {
 
-    public String sendChatPush(ChatRequest chat) throws Exception {
-        AndroidConfig android = AndroidConfig.builder()
-                .setPriority(AndroidConfig.Priority.HIGH) 
-                .setCollapseKey("chat_" + chat.getChatId())
-                .setNotification(AndroidNotification.builder()
-                        .setChannelId("default")
-                        .build())
-                .build();
+        public String sendChatPush(Mensaje chat) throws Exception {
 
-        Notification notif = Notification.builder()
-                .setTitle(chat.getSenderName())
-                .setBody(chat.getText())
-                .build();
+                Usuario receptor;
 
-        Message msg = Message.builder()
-                .setTopic("usuario10")
-                .setAndroidConfig(android)
-                .setNotification(notif)
-                .putData("type", "chat_message")
-                .putData("chatId", chat.getChatId())
-                .putData("messageId", chat.getMessageId())
-                .putData("senderId", chat.getSenderName())
-                .putData("senderName", chat.getSenderName())
-                .putData("text", chat.getText())
-                .putData("ts", String.valueOf(System.currentTimeMillis()))
-                .build();
+                if (chat.getUsuario().getIdUsuario() == chat.getChat().getUsuario1().getIdUsuario()) {
+                        receptor = chat.getChat().getUsuario2();
+                } else {
+                        receptor = chat.getChat().getUsuario1();
+                }
 
-        return FirebaseMessaging.getInstance().send(msg);
-    }
+                AndroidConfig android = AndroidConfig.builder()
+                                .setPriority(AndroidConfig.Priority.HIGH)
+                                .setCollapseKey("chat_" + chat.getMensajeId())
+                                .setNotification(AndroidNotification.builder()
+                                                .setChannelId("default")
+                                                .build())
+                                .build();
+
+                Notification notif = Notification.builder()
+                                .setTitle(receptor.getNombreUsuario() + " " + receptor.getApellidoUsuario())
+                                .setBody(chat.getMensajeTexto())
+                                .build();
+
+                Message msg = Message.builder()
+                                .setTopic("usuario10")
+                                .setAndroidConfig(android)
+                                .setNotification(notif)
+                                .putData("type", "chat_message")
+                                .putData("chatId", chat.getChat().getChatId().toString())
+                                .putData("messageId", chat.getMensajeId().toString())
+                                .putData("usuarioId", chat.getUsuario().getIdUsuario().toString())
+                                .putData("text", chat.getMensajeTexto())
+                                .putData("ts", String.valueOf(System.currentTimeMillis()))
+                                .build();
+
+                return FirebaseMessaging.getInstance().send(msg);
+        }
 }

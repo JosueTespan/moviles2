@@ -3,6 +3,8 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
+src/main/resources/google-cloud-storage.json
+src/main/resources/notificacionespush-859a4-firebase-adminsdk-fbsvc-224c055985.json
 
 ### STS ###
 .apt_generated

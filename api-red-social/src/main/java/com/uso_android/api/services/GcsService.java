@@ -26,7 +26,7 @@ public class GcsService {
     }
 
     public String upload(MultipartFile file, String folder) throws IOException {
-        String objectName = folder + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+        String objectName = "app-android/" + folder + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
 
         BlobId blobId = BlobId.of(bucketName, objectName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
@@ -38,12 +38,14 @@ public class GcsService {
         return objectName;
     }
 
-    public URL generarUrlTemporal(String objectName) {
+    public String generarUrlTemporal(String objectName) {
         BlobInfo blobInfo = BlobInfo.newBuilder(bucketName, objectName).build();
-        return storage.signUrl(
+
+        URL url = storage.signUrl(
                 blobInfo,
-                15, TimeUnit.MINUTES,
-                Storage.SignUrlOption.withV4Signature()
-        );
+                1, TimeUnit.HOURS,
+                Storage.SignUrlOption.withV4Signature());
+
+        return url.toString();
     }
 }

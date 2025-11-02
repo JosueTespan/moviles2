@@ -9,6 +9,9 @@ import lombok.Setter;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -17,29 +20,35 @@ public class UsuarioRequestDto {
 
     @NotNull
     @Size(max = 200)
+    @JsonInclude(Include.NON_NULL)
     private String apellidoUsuario;
 
     @NotNull
     @Size(max = 200)
+    @JsonInclude(Include.NON_NULL)
     private String correoUsuario;
 
-    @Size(max = 10)
-    private String duiUsuario;
-
+    @JsonInclude(Include.NON_NULL)
     private boolean estadoUsuario;
 
     @NotNull
     @Size(max = 200)
+    @JsonInclude(Include.NON_NULL)
     private String nombreUsuario;
 
     @NotNull
     @Size(max = 200)
+    @JsonInclude(Include.NON_NULL)
     private String passwordUsuario;
 
     @Size(max = 20)
-
+    @JsonInclude(Include.NON_NULL)
     private String telefonoUsuario;
+    
+    @JsonInclude(Include.NON_NULL)
+    private String usuarioImagen;
 
+    @JsonInclude(Include.NON_NULL)
     private List<Integer> idRoles;
 
 }

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import { useNavigation } from '@react-navigation/native';
 import { useActiveChat } from '../contexts/ActiveChatContext';
+import { getFormatoFecha } from '../utils/formatDate';
 
 function parse(content) {
     const d = content?.data || {};
@@ -25,9 +26,10 @@ export default function NotificationListener() {
             const m = parse(n.request?.content);
             if (!m) return;
             
-            if (m.chatId === activeChatId) {
+            if (m.chatId == activeChatId) {
                 try { await Notifications.dismissNotificationAsync(n.request.identifier); } catch {}
-                appendToActive({ id: m.messageId, text: m.text, senderName: m.senderName, createdAt: m.ts });
+                console.log(m);
+                appendToActive({ id: m.messageId, mensajeTexto: m.text, senderName: m.senderName, mensajeEnvio: m.ts });
             }
         });
         return () => sub.remove();

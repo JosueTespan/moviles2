@@ -1,20 +1,46 @@
-import React from "react";
-import { View, Text, FlatList, Pressable, StyleSheet, Image, TextInput } from "react-native";
+import React, { useState } from "react";
+import { View, Text, FlatList, Pressable, StyleSheet, Image, TextInput, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BottomTabBarHeightCallbackContext } from "@react-navigation/bottom-tabs";
-
-const DUMMY_CHATS = [
-    { id: "chatYohalmo", title: "Yohalmo", lastMessage:"Este es el ultimo mensaje que se envio" },
-    { id: "chatHants", title: "Hants", lastMessage:"Este es el ultimo mensaje que se envio" },
-    { id: "chatArmando", title: "Armando", lastMessage:"Este es el ultimo mensaje que se envio" },
-    { id: "chatJouse", title: "Josue", lastMessage:"Este es el ultimo mensaje que se envio" },
-];
-
-const AVATAR_OTHER = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=60";
+import { useEffect, useCallback } from "react";
+import { makeRequest } from "../services/fetchRequest";
+import { getFormatoFecha } from "../utils/formatDate";
 
 export default function ChatsScreen() {
     const navigation = useNavigation();
+    const [chats, setChats] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    useEffect(() => {
+        loadChats();
+    }, []);
+
+    async function loadChats() {
+        try {
+            const data = await makeRequest('/chats/listado/1/0');
+            setChats(Array.isArray(data) ? data : data.data || []);
+        } catch (e) {
+            console.log(e);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        loadChats();
+    }, []);
+
+    if (loading) {
+        return (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" />
+            </View>
+        );
+    }
 
     return (
         <SafeAreaView>
@@ -23,20 +49,22 @@ export default function ChatsScreen() {
 
                 <View style={styles.searcher}>
                     <TextInput
-                        placeholderTextColor="#9AA0A6" 
-                        style={styles.input} 
+                        placeholderTextColor="#9AA0A6"
+                        style={styles.input}
                         placeholder="Buscar chat"></TextInput>
                 </View>
 
                 <FlatList
-                    data={DUMMY_CHATS}
-                    keyExtractor={(i) => i.id}
+                    data={chats}
+                    keyExtractor={(i) => i.chatId}
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
                     renderItem={({ item }) => (
                         <Pressable
-                            onPress={() => navigation.navigate("Chat", { chatId: item.id, nameChat: item.title })}
+                            onPress={() => navigation.navigate("Chat", { chatId: item.chatId, nameChat: item.nombreUsuario, perfilImage: item.imagenUsuario })}
                         >
                             <View style={styles.card}>
-                                <Image source={{ uri: AVATAR_OTHER }} style={styles.avatar} />
+                                <Image source={{ uri: item.imagenUsuario }} style={styles.avatar} />
 
                                 <View style={styles.content}>
 
@@ -46,11 +74,11 @@ export default function ChatsScreen() {
                                             numberOfLines={1}
                                             ellipsizeMode="tail"
                                         >
-                                            {item.title}
+                                            {item.nombreUsuario}
                                         </Text>
 
                                         <Text style={styles.time} numberOfLines={1}>
-                                            Hace 3 dias
+                                            {getFormatoFecha(item.fechaUltimoMensaje)}
                                         </Text>
                                     </View>
 
@@ -59,7 +87,7 @@ export default function ChatsScreen() {
                                         numberOfLines={1}
                                         ellipsizeMode="tail"
                                     >
-                                        {item.lastMessage}
+                                        {item.ultimoMensaje}
                                     </Text>
                                 </View>
                             </View>

@@ -14,15 +14,7 @@ export default function App() {
             setExpoPushToken(expoToken);
             setDevicePushToken(deviceToken);
 
-            // Envía ambos a tu backend (guarda deviceToken para FCM directo)
             try {
-                /* await registerDeviceOnBackend({
-                    userId: "USER_123",
-                    platform: Platform.OS,
-                    expoPushToken: expoToken,
-                    devicePushToken: deviceToken
-                }); */
-
                 console.log('expoToken: ' + expoToken);
                 console.log('deviceToken: ' + deviceToken);
             } catch (e) {

@@ -4,14 +4,15 @@ import com.uso_android.api.dtos.ChatDto;
 import com.uso_android.api.entities.Chat;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-public interface ChatRepository extends JpaRepository<Chat, Integer>{
-  
-    @Query(value = """
-      SELECT 
+public interface ChatRepository extends JpaRepository<Chat, Integer> {
+
+  @Query(value = """
+      SELECT
         CAST(sq.chat_id AS UNSIGNED) AS chatId,
         CAST(sq.usuarioId AS UNSIGNED) AS usuarioId,
         CONCAT(u.usuario_nombre, ' ', u.usuario_apellido) AS nombreUsuario,
@@ -30,5 +31,18 @@ public interface ChatRepository extends JpaRepository<Chat, Integer>{
       ORDER BY chat_ultima_actividad DESC
       LIMIT :limite, 10
       """, nativeQuery = true)
-    List<ChatDto> getChatsUsuario(Integer usuario, Integer limite);
+  List<ChatDto> getChatsUsuario(Integer usuario, Integer limite);
+
+  @Query("""
+          select new com.uso_android.api.dtos.ChatDto(
+            c.usuario1.idUsuario, c.usuario1.nombreUsuario, c.usuario1.usuarioImagen,
+            c.usuario1.apellidoUsuario, c.usuario2.nombreUsuario, c.usuario2.usuarioImagen,
+            c.usuario2.apellidoUsuario
+          ) from Chat c where c.chatId = :chat
+      """)
+  ChatDto getInfoChat(Integer chat);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("update Chat c set c.mensaje.mensajeId = :mensajeId where c.chatId = :chatId")
+  void setUltimoMensaje(Integer chatId, Integer mensajeId);
 }

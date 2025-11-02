@@ -4,7 +4,9 @@ import java.util.List;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.TopicManagementResponse;
+import org.springframework.stereotype.Service;
 
+@Service
 public class PushTopicsService {
 
     private String topicForUser(Integer userId) {

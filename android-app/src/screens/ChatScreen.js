@@ -8,60 +8,27 @@ import {
     TouchableOpacity,
     StyleSheet,
     KeyboardAvoidingView,
-    Platform,
+    Platform, ScrollView
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import { useActiveChat } from "../contexts/ActiveChatContext";
 import { useEffect } from "react";
+import { getFormatoFecha } from "../utils/formatDate";
+import { makeRequest } from "../services/fetchRequest";
+import { takePhoto } from "../utils/selectImages";
+import { selectFiles } from "../utils/selectFiles";
+import ShowFile from "../components/ShowFile";
 
-const USER_ME = "me";
-const USER_OTHER = "other";
-
-const AVATAR_OTHER = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&q=60";
-
-const initialMessages = [
-    {
-        id: "m0",
-        text: "Primer mensaje.",
-        createdAt: "1:45 AM",
-        sender: USER_OTHER,
-        seen: true,
-    },
-    {
-        id: "m1",
-        text: "Primera respuesta",
-        createdAt: "1:46 AM",
-        sender: USER_ME,
-        seen: true,
-    },
-    {
-        id: "m2",
-        text: "Mas texto adicional al mensaje inicial!",
-        createdAt: "1:46 AM",
-        sender: USER_ME,
-        seen: true,
-    },
-    {
-        id: "m3",
-        text: "Pues se ve que si funciona",
-        createdAt: "1:46 AM",
-        sender: USER_OTHER,
-        seen: true,
-    },
-    {
-        id: "m4",
-        text: "Ya solo falta agregarlo a la api",
-        createdAt: "1:47 AM",
-        sender: USER_OTHER,
-        seen: true,
-    },
-];
+const userId = 1;
 
 export default function ChatScreen({ route, navigation }) {
-    const [draft, setDraft] = useState("");
+    const [mensaje, setMensaje] = useState("");
     const listRef = useRef(null);
-    const { chatId, nameChat } = route.params;
+    const [nameChat, setNameChat] = useState('');
+    const [perfilImage, setPerfilImage] = useState('');
+    const { chatId } = route.params;
+    const [archivos, setArchivos] = useState([]);
 
     const {
         setActiveChatId,
@@ -77,44 +44,68 @@ export default function ChatScreen({ route, navigation }) {
 
     useEffect(() => {
         let mounted = true;
-        setActiveChatId(chatId);
 
         (async () => {
             try {
-                //const msgs = await fetchLastMessages(chatId, 10);
-                /* if (mounted) */ setActiveMessages(initialMessages);
-                //markChatRead(chatId);
-            } catch (e) { /* log/ignore */ }
+                const data = await makeRequest(`/chats/mensajes/${chatId}/0/${userId}`);
+                setActiveMessages(prev => [...data.data.reverse(), ...prev]);
+
+                setNameChat(`${data.infoChat.nombreUsuario} ${data.infoChat.apellidoUsuario}`);
+                setPerfilImage(data.infoChat.imagenUsuario);
+            } catch (e) {
+            }
         })();
 
         return () => {
             mounted = false;
             clearActiveChat();
         };
-    }, [chatId]);
+    }, []);
 
-    const data = useMemo(() => [...messages], [messages]);
+    async function sendMessage() {
+        const text = mensaje.trim();
+        if (!text && archivos.length == 0) return;
 
-    function sendMessage() {
-        const text = draft.trim();
-        if (!text) return;
+        const mensajeInfo = new FormData();
+        mensajeInfo.append('chatId', chatId);
+        mensajeInfo.append('usuarioId', userId);
+        mensajeInfo.append('mensajeTexto', text);
 
-        const newMsg = {
-            id: String(Date.now()),
-            text,
-            createdAt: new Date().toLocaleTimeString([], {
-                hour: "numeric",
-                minute: "2-digit",
-            }),
-            sender: USER_ME,
-            seen: false,
-        };
-        setActiveMessages((prev) => [...prev, newMsg]);
-        setDraft("");
+        const dataMessage = {
+            chatId: chatId,
+            usuarioId: userId,
+            mensajeTexto: text
+        }
+
+        if (archivos.length > 0) {
+            archivos.forEach(file => {
+                mensajeInfo.append('files', {
+                    uri: file.uri,
+                    name: file.name,
+                    type: file.type,
+                });
+            });
+        }
+
+        setMensaje("");
+        setArchivos([]);
+
+        try {
+            const data = await makeRequest(`/chats/mensaje`, { method: 'post' }, mensajeInfo);
+
+            dataMessage.mensajeId = data.data;
+            dataMessage.imagenes = data.files;
+            dataMessage.mensajeEnvio = new Date();
+        } catch (e) {
+            console.log(e);
+            return;
+        }
+
+        setActiveMessages((prev) => [...prev, dataMessage]);
 
         setTimeout(() => {
             setActiveMessages((prev) =>
-                prev.map((m) => (m.id === newMsg.id ? { ...m, seen: true } : m))
+                prev.map((m) => (m.id == dataMessage.mensajeId ? { ...m, seen: true } : m))
             );
         }, 1200);
 
@@ -123,16 +114,40 @@ export default function ChatScreen({ route, navigation }) {
         });
     }
 
-    const renderItem = ({ item, index }) => {
-        const isMe = item.sender === USER_ME;
+    const removeAt = (idx) => {
+        setArchivos(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const isImage = (file) =>
+        file.type?.startsWith('image/') ||
+        /\.(jpg|jpeg|png|gif|webp|heic|heif)$/i.test(file.name);
+        
+    const fmtSize = (bytes = 0) => {
+        if (bytes < 1024) return `${bytes} B`;
+        const kb = bytes / 1024;
+        if (kb < 1024) return `${kb.toFixed(1)} KB`;
+        const mb = kb / 1024;
+        return `${mb.toFixed(1)} MB`;
+    };
+
+    const renderMessage = ({ item, index }) => {
+        const isMe = item.usuarioId === userId;
         const showTimeInline = true;
 
         return (
             <View style={[styles.row, isMe ? styles.right : styles.left]}>
                 <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
                     <Text style={[styles.text, isMe ? styles.textMe : styles.textOther]}>
-                        {item.text}
+                        {item.mensajeTexto}
                     </Text>
+
+                    {Array.isArray(item.imagenes) && item.imagenes.length > 0 && (
+                        <View style={styles.attachmentsWrap}>
+                            {item.imagenes.map((url, i) => (
+                                <ShowFile key={`${url}-${i}`} url={url} />
+                            ))}
+                        </View>
+                    )}
 
                     <View style={styles.meta}>
                         {showTimeInline && (
@@ -142,7 +157,7 @@ export default function ChatScreen({ route, navigation }) {
                                     isMe ? styles.timeOnPurple : styles.timeOnWhite,
                                 ]}
                             >
-                                {item.createdAt}
+                                {getFormatoFecha(item.mensajeEnvio)}
                             </Text>
                         )}
                         {isMe && (
@@ -175,7 +190,7 @@ export default function ChatScreen({ route, navigation }) {
                 <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.goBack()}>
                     <Ionicons name="arrow-back" size={22} />
                 </TouchableOpacity>
-                <Image source={{ uri: AVATAR_OTHER }} style={styles.avatar} />
+                <Image source={{ uri: perfilImage }} style={styles.avatar} />
 
                 <View style={styles.headerCenter}>
                     <Text style={styles.name}>{nameChat}</Text>
@@ -183,45 +198,88 @@ export default function ChatScreen({ route, navigation }) {
                 </View>
             </View>
 
-            <FlatList
-                ref={listRef}
-                style={styles.list}
-                contentContainerStyle={{ padding: 16, paddingBottom: 12 }}
-                data={activeMessages}
-                keyExtractor={(it) => it.id}
-                renderItem={renderItem}
-                onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-                onLayout={() => listRef.current?.scrollToEnd({ animated: false })}
-            />
-
             <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={{ flex: 1 }}
+                behavior={Platform.OS === "ios" ? "padding" : 'height'}
                 keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
             >
-                <View style={styles.inputBar}>
-                    <TouchableOpacity>
-                        <Ionicons name="happy-outline" size={22} />
-                    </TouchableOpacity>
+                <FlatList
+                    ref={listRef}
+                    style={styles.list}
+                    contentContainerStyle={{ padding: 16, paddingBottom: 12 }}
+                    data={activeMessages}
+                    keyExtractor={(it) => it.mensajeId}
+                    renderItem={renderMessage}
+                    onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+                    onLayout={() => listRef.current?.scrollToEnd({ animated: false })}
+                />
 
-                    <TextInput
-                        value={draft}
-                        onChangeText={setDraft}
-                        placeholder="Type your message…"
-                        style={styles.input}
-                        multiline
-                    />
+                <View>
+                    {archivos.length > 0 && (
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.filesContent}
+                        >
+                            {archivos.map((f, idx) => (
+                                <View
+                                    key={f.uri + idx}
+                                    style={styles.viewFile}
+                                >
+                                    {isImage(f) ? (
+                                        <Image
+                                            source={{ uri: f.uri }}
+                                            style={{ width: 80, height: 80, borderRadius: 8 }}
+                                            resizeMode="cover"
+                                        />
+                                    ) : (
+                                        <View
+                                            style={{
+                                                width: 80, height: 80, borderRadius: 8,
+                                                backgroundColor: '#f3f4f6',
+                                                alignItems: 'center', justifyContent: 'center'
+                                            }}
+                                        >
+                                            <Text style={{ fontSize: 32 }}>📎</Text>
+                                        </View>
+                                    )}
 
-                    <TouchableOpacity style={styles.iconBtn}>
-                        <Ionicons name="image-outline" size={22} />
-                    </TouchableOpacity>
+                                    <Text
+                                        numberOfLines={1}
+                                        style={{ marginTop: 6, fontSize: 12, fontWeight: '600', maxWidth: 88 }}
+                                    >
+                                        {f.name}
+                                    </Text>
+                                    <Text style={{ fontSize: 11, color: '#6b7280' }}>{fmtSize(f.size)}</Text>
 
-                    <TouchableOpacity style={styles.iconBtn}>
-                        <MaterialCommunityIcons name="paperclip" size={22} />
-                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={() => removeAt(idx)} style={{ marginTop: 6 }}>
+                                        <Text style={{ color: '#ef4444', fontSize: 12 }}>Quitar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    )}
+                    <View style={styles.inputBar}>
+                        <TextInput
+                            value={mensaje}
+                            onChangeText={setMensaje}
+                            placeholder="Escribir un mensaje…"
+                            style={styles.input}
+                            multiline
+                        />
 
-                    <TouchableOpacity style={styles.sendBtn} onPress={sendMessage}>
-                        <Ionicons name="paper-plane" size={20} color="#fff" />
-                    </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconBtn} onPress={() => takePhoto(setArchivos) } >
+                            <Ionicons name="image-outline" size={22} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.iconBtn} onPress={() => selectFiles(setArchivos) } >
+                            <MaterialCommunityIcons name="paperclip" size={22} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.sendBtn} onPress={() => sendMessage(setArchivos) }>
+                            <Ionicons name="paper-plane" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -247,9 +305,7 @@ const styles = StyleSheet.create({
     headerCenter: { flex: 1, alignItems: "center" },
     name: { fontSize: 16, fontWeight: "700", color: "#222" },
     role: { fontSize: 12, color: "#33bd13ff", marginTop: 2 },
-
     list: { flex: 1 },
-
     row: {
         flexDirection: "row",
         alignItems: "flex-end",
@@ -257,7 +313,6 @@ const styles = StyleSheet.create({
     },
     left: { justifyContent: "flex-start" },
     right: { justifyContent: "flex-end" },
-
     avatar: {
         width: 28,
         height: 28,
@@ -271,7 +326,6 @@ const styles = StyleSheet.create({
         marginLeft: 6,
         opacity: 0.85,
     },
-
     bubble: {
         maxWidth: "75%",
         paddingHorizontal: 12,
@@ -288,11 +342,9 @@ const styles = StyleSheet.create({
         backgroundColor: PURPLE,
         borderTopRightRadius: 6,
     },
-
     text: { fontSize: 15, lineHeight: 20 },
     textOther: { color: "#222" },
     textMe: { color: "#fff" },
-
     meta: {
         marginTop: 6,
         flexDirection: "row",
@@ -302,12 +354,10 @@ const styles = StyleSheet.create({
     time: { fontSize: 11 },
     timeOnPurple: { color: "rgba(255,255,255,0.85)" },
     timeOnWhite: { color: "#9A9AA1" },
-
     seenWrap: { flexDirection: "row", alignItems: "center" },
     check: { marginLeft: 2, color: "rgba(255,255,255,0.6)" },
     checkOverlap: { marginLeft: -4 },
     checkSeen: { color: "#CDE7FF" },
-
     inputBar: {
         flexDirection: "row",
         alignItems: "center",
@@ -333,5 +383,28 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         backgroundColor: PURPLE,
         borderRadius: 16,
+    },
+    viewFile: {
+        width: 100,
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        borderRadius: 10,
+        padding: 6,
+        alignItems: 'center'
+
+    },
+    filesContent: {
+        marginTop: 12,
+        backgroundColor: "#fff",
+        padding: 5,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: "#e8e8e8",
+    },
+    attachmentsWrap: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 10
     },
 });

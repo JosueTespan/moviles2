@@ -1,6 +1,7 @@
 package com.uso_android.api.services;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -31,7 +32,7 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public Chat obtenerReferenciaChat(int id) {
-        if(!this.chatRepository.existsById(id)){
+        if (!this.chatRepository.existsById(id)) {
             throw new NotFoundException("Chat no encontrado con el ID: " + id);
         }
         return this.chatRepository.getReferenceById(id);
@@ -39,13 +40,13 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public Mensaje obtenerReferenciaMensaje(int id) {
-        if(!this.mensajeRepository.existsById(id)){
+        if (!this.mensajeRepository.existsById(id)) {
             throw new NotFoundException("Mensaje no encontrado con el ID: " + id);
         }
         return this.mensajeRepository.getReferenceById(id);
     }
 
-    public List<ChatDto> getChatsUsuario(Integer user, Integer page){
+    public List<ChatDto> getChatsUsuario(Integer user, Integer page) {
         return this.chatRepository.getChatsUsuario(user, page);
     }
 
@@ -53,12 +54,23 @@ public class ChatService {
         List<MensajeDto> mensajes = this.mensajeRepository.getMessagesByChat(chat, page);
 
         for (MensajeDto mensajeDto : mensajes) {
-            if(mensajeDto.isHasImages()){
-                mensajeDto.setImagenes(imagenMensajeRepository.getImagesByMessage(mensajeDto.getMensajeId()));
+            if (mensajeDto.isHasImages()) {
+                List<String> rutasTemporales = imagenMensajeRepository.getImagesByMessage(mensajeDto.getMensajeId());
+
+                for (int i = 0; i < rutasTemporales.size(); i++) {
+                    String urlTemporal = gcsService.generarUrlTemporal(rutasTemporales.get(i));
+                    rutasTemporales.set(i, urlTemporal);
+                }
+
+                mensajeDto.setImagenes(rutasTemporales);
             }
         }
 
         return mensajes;
+    }
+
+    public ChatDto getInfoChat(Integer chat) {
+        return this.chatRepository.getInfoChat(chat);
     }
 
     @Transactional
@@ -69,13 +81,14 @@ public class ChatService {
         mensaje.setMensajeEnvio(LocalDateTime.now());
         mensaje.setMensajeTexto(mensajeDto.getMensajeTexto());
 
-        if(mensajeDto.getMensajePadreId() != null){
+        if (mensajeDto.getMensajePadreId() != null) {
             mensaje.setMensajePadre(this.obtenerReferenciaMensaje(mensajeDto.getMensajePadreId()));
         }
 
         mensaje = this.mensajeRepository.save(mensaje);
+        List<String> archivos = new ArrayList<>();
 
-        if(mensajeDto.getImagenes().size() > 0){
+        if (mensajeDto.getFiles() != null && mensajeDto.getFiles().size() > 0) {
             mensaje.setHasImages(true);
 
             for (MultipartFile file : mensajeDto.getFiles()) {
@@ -84,12 +97,18 @@ public class ChatService {
 
                     imagen.setMensaje(mensaje);
                     imagen.setImagenMensajeRuta(gcsService.upload(file, "chats" + mensajeDto.getChatId()));
+                    archivos.add(gcsService.generarUrlTemporal(imagen.getImagenMensajeRuta()));
 
                     this.imagenMensajeRepository.save(imagen);
-                } catch (Exception e) { }
+                } catch (Exception e) {
+                }
             }
         }
 
+        mensajeDto.setImagenes(archivos);
+        mensaje.getChat().setMensaje(mensaje);
+        this.chatRepository.save(mensaje.getChat());
+        
         return mensaje;
     }
 }

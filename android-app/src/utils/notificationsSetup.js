@@ -6,7 +6,7 @@ Notifications.setNotificationHandler({
     handleNotification: async (notification) => {
         const d = notification?.request?.content?.data || {};
         const isChatMsg = d.type === 'chat_message';
-        const isSameChat = isChatMsg && d.chatId === activeChatIdRef.current;
+        const isSameChat = isChatMsg && d.chatId == activeChatIdRef.current;
 
         const base = {
             shouldShowAlert: !isSameChat,

@@ -19,7 +19,7 @@ public interface MensajeRepository extends JpaRepository<Mensaje, Integer> {
             )
             from Mensaje m
             LEFT JOIN m.mensajePadre p
-            where m.chat.chatId = :chat ORDER BY m.mensajeId desc limit 10 offset :page
+            where m.chat.chatId = :chat ORDER BY m.mensajeId desc limit 15 offset :page
         """)
     List<MensajeDto> getMessagesByChat(Integer chat, Integer page);
 }

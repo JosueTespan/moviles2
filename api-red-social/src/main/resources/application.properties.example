@@ -7,7 +7,12 @@ spring.jpa.database-platform=org.hibernate.dialect.MySQL8Dialect
 spring.jpa.show-sql=true
 
 spring.application.name=API red social android
-firebase.credentials.path=notificacionespush-859a4-firebase-adminsdk-fbsvc-224c055985.json
-gcs.bucket.name=laravel-test-yohalmo
-gcs.credentials.path=classpath:google-cloud-storage.json
+firebase.credentials.path=
+gcs.bucket.name=
+gcs.credentials.path=
 
+# Tamaño máximo por archivo
+spring.servlet.multipart.max-file-size=50MB
+
+# Tamaño máximo del request completo (suma de todos los archivos + campos)
+spring.servlet.multipart.max-request-size=200MB
